@@ -1,15 +1,23 @@
 package startup
 
 import (
-	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/Gigfinder-io/util.gigfinder.io/db"
 	"github.com/Gigfinder-io/util.gigfinder.io/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"gopkg.in/yaml.v2"
 )
+
+type AppConfig struct {
+	DB struct {
+		Address  string `yaml:"address"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+	} `yaml:"db"`
+}
 
 type service struct {
 	ID          primitive.ObjectID `bson:"_id"`
@@ -54,31 +62,19 @@ func Go(serviceName string) error {
 }
 
 func findDBAccess() error {
-	fName := "../args/db.txt"
-	file, err := os.Open(fName)
+	fName := "./resource/application.yml"
+	yamlFile, err := ioutil.ReadFile(fName)
 	if err != nil {
-		return fmt.Errorf("could not open file: [%v] error: %v", fName, err)
+		return fmt.Errorf("failed to read file [\"%v\"]: %v", fName, err)
 	}
-	defer file.Close()
+	config := &AppConfig{}
+	err = yaml.Unmarshal(yamlFile, config)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling: %v", err)
+	}
+	db.Address = config.DB.Address
+	db.User = config.DB.User
+	db.Pass = config.DB.Password
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		txt := scanner.Text()
-		if val := strings.TrimPrefix(txt, "addr="); val != txt {
-			db.Address = val
-			log.Msgf(3, "Found db address: [%v]", val)
-		}
-		if val := strings.TrimPrefix(txt, "usr="); val != txt {
-			db.User = val
-			log.Msgf(3, "Found db user: [%v]", val)
-		}
-		if val := strings.TrimPrefix(txt, "pass="); val != txt {
-			db.Pass = val
-			log.Msgf(3, "Found db password: [%v]", val)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("could not read db descriptor file, error: %v", err)
-	}
 	return nil
 }
