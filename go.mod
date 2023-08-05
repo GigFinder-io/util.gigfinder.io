@@ -1,4 +1,4 @@
-module github.com/Gigfidner-io/util.gigfinder.io
+module github.com/Gigfinder-io/util.gigfinder.io
 
 go 1.20
 
